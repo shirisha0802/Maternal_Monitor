@@ -1,22 +1,108 @@
-import React from "react";
-import { useLocation, useNavigate } from "react-router-dom";
+import React, { useEffect, useState } from "react";
+import axios from "axios";
+import { useNavigate } from "react-router-dom";
 
 export default function PatientDetails() {
-  const location = useLocation();
   const navigate = useNavigate();
-  const patient = location.state;
 
-  if (!patient) {
+  const [assessments, setAssessments] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+
+  // Get all assessments
+  const fetchAssessments = async () => {
+    try {
+      const token = localStorage.getItem("access_token");
+
+      const response = await axios.get(
+        "http://127.0.0.1:8000/assessments",
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      setAssessments(response.data);
+    } catch (error) {
+      console.error(error.response?.data);
+
+      setError(
+        error.response?.data?.detail ||
+        "Failed to load assessments."
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchAssessments();
+  }, []);
+
+  // Delete assessment
+  const handleDelete = async (assessmentId) => {
+    const confirmDelete = window.confirm(
+      "Are you sure you want to delete this assessment?"
+    );
+
+    if (!confirmDelete) return;
+
+    try {
+      const token = localStorage.getItem("access_token");
+
+      await axios.delete(
+        `http://127.0.0.1:8000/assessments/${assessmentId}`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      // Remove deleted assessment from the page
+      setAssessments(
+        assessments.filter(
+          (assessment) => assessment.id !== assessmentId
+        )
+      );
+
+      alert("Assessment deleted successfully.");
+    } catch (error) {
+      console.error(error.response?.data);
+
+      alert(
+        error.response?.data?.detail ||
+        "Failed to delete assessment."
+      );
+    }
+  };
+
+  // Edit assessment
+  const handleEdit = (assessmentId) => {
+    navigate(`/dashboard?edit=${assessmentId}`);
+  };
+
+  if (loading) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-gray-50">
-        <h2 className="text-lg font-medium text-gray-600 mb-4">
-          Patient data not found.
-        </h2>
+      <div className="min-h-screen flex items-center justify-center">
+        <p className="text-purple-600 font-semibold">
+          Loading assessments...
+        </p>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center">
+        <p className="text-red-600 mb-4">{error}</p>
+
         <button
-          onClick={() => navigate("/register")}
-          className="px-6 py-2 bg-purple-600 text-white rounded-md shadow hover:bg-purple-700 transition"
+          onClick={() => navigate("/dashboard")}
+          className="px-6 py-2 bg-purple-600 text-white rounded-md"
         >
-          Register Patient
+          Back to Dashboard
         </button>
       </div>
     );
@@ -24,87 +110,172 @@ export default function PatientDetails() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-50 to-teal-100 py-12 px-6">
+
       <div className="max-w-6xl mx-auto">
 
-        {/* Page Header */}
         <div className="mb-10">
           <h1 className="text-3xl font-bold text-purple-700">
-            Patient Profile
+            Assessment History
           </h1>
+
           <p className="text-sm text-gray-500 mt-1">
-            Maternal Health Monitoring Overview
+            Previous maternal health assessments
           </p>
         </div>
 
-        {/* Profile Card */}
-        <div className="bg-white rounded-2xl shadow-xl border border-purple-100 p-10">
+        {assessments.length === 0 ? (
+          <div className="bg-white rounded-2xl shadow-xl p-10 text-center">
 
-          {/* Patient Overview */}
-          <div className="flex items-center gap-6 mb-8">
-            <div className="w-16 h-16 rounded-full bg-purple-100 flex items-center justify-center text-purple-700 text-xl font-bold">
-              {patient.firstName.charAt(0)}
-              {patient.lastName.charAt(0)}
-            </div>
-
-            <div>
-              <h2 className="text-xl font-semibold text-gray-800">
-                {patient.firstName} {patient.lastName}
-              </h2>
-              <p className="text-sm text-gray-500">
-                Username: {patient.username}
-              </p>
-              <p className="text-sm text-gray-500">
-                Phone: {patient.phone}
-              </p>
-            </div>
-          </div>
-
-          {/* Appointment Card */}
-          <div className="bg-purple-50 border border-purple-200 rounded-xl p-6 mb-8">
-            <p className="text-sm text-purple-600 font-medium">
-              Next Scheduled Appointment
+            <p className="text-gray-500">
+              No assessments found.
             </p>
-            <p className="text-lg font-semibold text-purple-800">
-              {patient.nextAppointment}
-            </p>
-            <p className="text-xs text-gray-500 mt-1">
-              Trimester 1 – Routine Follow-up
-            </p>
+
+            <button
+              onClick={() => navigate("/dashboard")}
+              className="mt-5 px-6 py-2 bg-purple-600 text-white rounded-md"
+            >
+              Create Assessment
+            </button>
+
           </div>
+        ) : (
+          <div className="space-y-6">
 
-          {/* Medical Record Section */}
-          <div>
-            <h3 className="text-lg font-semibold text-teal-700 mb-6">
-              Medical Record (Initial Status)
-            </h3>
+            {assessments.map((assessment) => (
+              <div
+                key={assessment.id}
+                className="bg-white rounded-2xl shadow-xl border border-purple-100 p-8"
+              >
 
-            <div className="grid md:grid-cols-3 gap-6">
-              {[
-                "Age",
-                "Systolic BP",
-                "Diastolic BP",
-                "Blood Sugar",
-                "Heart Rate",
-                "Body Temperature",
-                "BMI",
-                "Hemoglobin",
-                "Diet Score",
-                "Protein",
-                "Calcium",
-                "Iron",
-              ].map((field) => (
-                <Detail key={field} label={field} value="Not Recorded" />
-              ))}
-            </div>
+                {/* Assessment Header */}
+
+                <div className="flex justify-between items-center mb-6">
+
+                  <div>
+                    <h2 className="text-xl font-semibold text-purple-700">
+                      Assessment #{assessment.id}
+                    </h2>
+
+                    <p className="text-sm text-gray-500">
+                      {new Date(
+                        assessment.created_at
+                      ).toLocaleString()}
+                    </p>
+                  </div>
+
+                  <div className="flex gap-3">
+
+                    <button
+                      onClick={() =>
+                        handleEdit(assessment.id)
+                      }
+                      className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+                    >
+                      Edit
+                    </button>
+
+                    <button
+                      onClick={() =>
+                        handleDelete(assessment.id)
+                      }
+                      className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700"
+                    >
+                      Delete
+                    </button>
+
+                  </div>
+
+                </div>
+
+                {/* Health Information */}
+
+                <h3 className="text-lg font-semibold text-teal-700 mb-4">
+                  Health Information
+                </h3>
+
+                <div className="grid md:grid-cols-3 gap-5">
+
+                  <Detail label="Age" value={assessment.age} />
+                  <Detail label="Systolic BP" value={assessment.systolicBP} />
+                  <Detail label="Diastolic BP" value={assessment.diastolicBP} />
+                  <Detail label="Blood Sugar" value={assessment.BS} />
+                  <Detail label="Body Temperature" value={assessment.bodyTemp} />
+                  <Detail label="Heart Rate" value={assessment.heartRate} />
+                  <Detail label="BMI" value={assessment.bmi} />
+                  <Detail label="Hemoglobin" value={assessment.hb} />
+                  <Detail label="Diet Score" value={assessment.dietScore} />
+                  <Detail label="Protein" value={assessment.protein_g} />
+                  <Detail label="Calcium" value={assessment.calcium_mg} />
+                  <Detail label="Iron" value={assessment.iron_mg} />
+
+                </div>
+
+                {/* Risk Assessment */}
+
+                <div className="mt-8 bg-purple-50 border border-purple-200 rounded-xl p-6">
+
+                  <h3 className="text-lg font-semibold text-purple-700 mb-3">
+                    Risk Assessment
+                  </h3>
+
+                  <p>
+                    Risk Class:{" "}
+                    <strong>
+                      {assessment.risk_class}
+                    </strong>
+                  </p>
+
+                  <p>
+                    High Risk Probability:{" "}
+                    <strong>
+                      {(assessment.high_risk_probability * 100).toFixed(1)}%
+                    </strong>
+                  </p>
+
+                </div>
+
+                {/* Nutrition Assessment */}
+
+                <div className="mt-6 bg-teal-50 border border-teal-200 rounded-xl p-6">
+
+                  <h3 className="text-lg font-semibold text-teal-700 mb-3">
+                    Nutrition Assessment
+                  </h3>
+
+                  <p>
+                    Deficiency:{" "}
+                    <strong>
+                      {assessment.deficiency_type}
+                    </strong>
+                  </p>
+
+                  <p>
+                    Confidence:{" "}
+                    <strong>
+                      {(assessment.nutrient_confidence * 100).toFixed(1)}%
+                    </strong>
+                  </p>
+
+                  <p className="mt-4 font-medium">
+                    Recommended Foods:
+                  </p>
+
+                  <ul className="list-disc list-inside mt-2">
+                    {assessment.recommended_foods.map(
+                      (food, index) => (
+                        <li key={index}>{food}</li>
+                      )
+                    )}
+                  </ul>
+
+                </div>
+
+              </div>
+            ))}
+
           </div>
+        )}
 
-          <div className="mt-10 text-right">
-            <span className="px-4 py-2 bg-green-100 text-green-700 text-sm font-medium rounded-md">
-              ✔ Registration Successful
-            </span>
-          </div>
-
-        </div>
       </div>
     </div>
   );
@@ -115,6 +286,7 @@ const Detail = ({ label, value }) => (
     <p className="text-xs uppercase tracking-wide text-gray-400">
       {label}
     </p>
+
     <p className="mt-1 text-base font-medium text-gray-800">
       {value}
     </p>

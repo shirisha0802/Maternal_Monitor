@@ -1,9 +1,15 @@
 import React, { useState } from "react";
 import axios from "axios";
+import { useNavigate } from "react-router-dom";
+import { useDispatch } from "react-redux";
+import { login } from "../store/authSlice";
 
 function Login() {
+  const navigate = useNavigate();
+  const dispatch = useDispatch();
+
   const [form, setForm] = useState({
-    username: "",
+    email: "",
     password: "",
   });
 
@@ -12,15 +18,19 @@ function Login() {
   const [loading, setLoading] = useState(false);
 
   const handleChange = (e) => {
-    setForm({ ...form, [e.target.name]: e.target.value });
+    setForm({
+      ...form,
+      [e.target.name]: e.target.value,
+    });
   };
 
   const loginValid =
-    form.username.trim() !== "" &&
+    form.email.trim() !== "" &&
     form.password.trim() !== "";
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+
     if (!loginValid) return;
 
     try {
@@ -28,24 +38,35 @@ function Login() {
       setError("");
 
       const response = await axios.post(
-        "http://localhost:8080/user/login",
+        "http://localhost:8000/login",
         {
-          username: form.username,
+          email: form.email,
           password: form.password,
         }
       );
 
       console.log("Login Success:", response.data);
 
+      // Save JWT token
+      localStorage.setItem(
+        "access_token",
+        response.data.access_token
+      );
+
+      // Update Redux login state
+      dispatch(login(response.data));
+
       alert("Login Successful ✅");
 
-      // Later you can store token or redirect
-      // navigate("/dashboard");
+      // Go to dashboard
+      navigate("/dashboard");
 
     } catch (err) {
+      console.error(err.response?.data);
+
       setError(
-        err.response?.data?.message ||
-        "Invalid username or password"
+        err.response?.data?.detail ||
+        "Invalid email or password"
       );
     } finally {
       setLoading(false);
@@ -53,89 +74,87 @@ function Login() {
   };
 
   return (
-    <div className="flex min-h-screen font-sans">
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-purple-50 to-teal-100 px-4">
 
-      {/* LEFT SIDE */}
-      <div className="hidden md:flex flex-1 relative bg-gradient-to-br from-purple-300 to-pink-300 items-center justify-center overflow-hidden">
+      <div className="w-full max-w-md bg-white rounded-2xl shadow-2xl p-8">
 
-        {/* Decorative Bubbles */}
-        <div className="absolute w-40 h-40 bg-white/20 rounded-full top-[15%] left-[10%] animate-bounce"></div>
-        <div className="absolute w-36 h-36 bg-white/20 rounded-full bottom-[15%] left-[25%] animate-pulse"></div>
-        <div className="absolute w-40 h-40 bg-white/15 rounded-full top-[70%] right-[15%] animate-bounce"></div>
-        <div className="absolute w-32 h-32 bg-white/15 rounded-full top-[10%] right-[5%] animate-pulse"></div>
+        <h1 className="text-3xl font-bold text-center text-purple-700 mb-2">
+          Welcome Back
+        </h1>
 
-        <div className="w-2/3 bg-white p-16 rounded-[25px] shadow-[0_30px_60px_rgba(0,0,0,0.15)] text-center z-10">
-          <h1 className="text-[40px] text-purple-800 font-bold">
-            Maternal Care
-          </h1>
-          <p className="text-gray-600 mt-3">
-            Intelligent maternal health monitoring platform 🤍
-          </p>
-        </div>
-      </div>
+        <p className="text-center text-gray-500 mb-8">
+          Login to access the Maternal Health System
+        </p>
 
-      {/* RIGHT SIDE */}
-      <div className="flex flex-1 bg-purple-50 items-center justify-center px-6">
+        {error && (
+          <div className="mb-4 p-3 rounded-lg bg-red-100 text-red-600">
+            {error}
+          </div>
+        )}
 
-        <div className="w-[380px] bg-white p-[35px] rounded-[20px] shadow-[0_20px_40px_rgba(0,0,0,0.08)]">
+        <form onSubmit={handleSubmit}>
 
-          <h2 className="text-center text-2xl text-purple-700 mb-5 font-semibold">
-            Secure Login
-          </h2>
-
-          {error && (
-            <p className="text-red-500 text-sm text-center mb-3">
-              {error}
-            </p>
-          )}
-
-          <form onSubmit={handleSubmit} className="flex flex-col">
-
-            <input
-              name="username"
-              placeholder="Username"
-              value={form.username}
-              onChange={handleChange}
-              className="mb-3 p-3 rounded-lg border border-gray-300 outline-none focus:ring-2 focus:ring-purple-500"
-            />
-
-            <input
-              name="password"
-              type={showPassword ? "text" : "password"}
-              placeholder="Password"
-              value={form.password}
-              onChange={handleChange}
-              className="mb-3 p-3 rounded-lg border border-gray-300 outline-none focus:ring-2 focus:ring-purple-500"
-            />
-
-            <label className="text-sm mb-3 flex items-center text-gray-600">
-              <input
-                type="checkbox"
-                checked={showPassword}
-                onChange={(e) =>
-                  setShowPassword(e.target.checked)
-                }
-                className="mr-2"
-              />
-              Show Password
+          {/* Email */}
+          <div className="mb-5">
+            <label className="block text-sm font-medium text-gray-600 mb-2">
+              Email
             </label>
 
-            <button
-              type="submit"
-              disabled={!loginValid || loading}
-              className={`mt-2 p-3 rounded-lg text-white font-medium transition ${
-                loginValid
-                  ? "bg-purple-600 hover:bg-purple-700"
-                  : "bg-purple-600 opacity-60 cursor-not-allowed"
-              }`}
-            >
-              {loading ? "Logging in..." : "Login"}
-            </button>
+            <input
+              type="email"
+              name="email"
+              placeholder="Enter your email"
+              value={form.email}
+              onChange={handleChange}
+              className="w-full p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+              required
+            />
+          </div>
 
-          </form>
+          {/* Password */}
+          <div className="mb-6">
+            <label className="block text-sm font-medium text-gray-600 mb-2">
+              Password
+            </label>
 
-        </div>
+            <div className="relative">
+
+              <input
+                type={showPassword ? "text" : "password"}
+                name="password"
+                placeholder="Enter your password"
+                value={form.password}
+                onChange={handleChange}
+                className="w-full p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+                required
+              />
+
+              <button
+                type="button"
+                onClick={() =>
+                  setShowPassword(!showPassword)
+                }
+                className="absolute right-3 top-3 text-sm text-purple-600"
+              >
+                {showPassword ? "Hide" : "Show"}
+              </button>
+
+            </div>
+          </div>
+
+          {/* Login Button */}
+          <button
+            type="submit"
+            disabled={loading || !loginValid}
+            className="w-full bg-purple-600 text-white p-3 rounded-lg font-semibold hover:bg-purple-700 transition disabled:opacity-50"
+          >
+            {loading ? "Logging in..." : "Login"}
+          </button>
+
+        </form>
+
       </div>
+
     </div>
   );
 }

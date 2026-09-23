@@ -7,10 +7,9 @@ import store from "./store/store.js";
 import App from "./App.jsx";
 import AuthLayout from "./components/AuthLayout.jsx";
 import Login from "./pages/Login.jsx";
-import Register from "./pages/Register.jsx";
 import Home from "./pages/Home.jsx";
 import MaternalDashboard from "./pages/MaternalDashboard.jsx";
-import PatientDetails from "./pages/PatientDetails.jsx"; // ✅ Added
+import PatientDetails from "./pages/PatientDetails.jsx";
 import EmergencySymptoms from "./pages/EmergencySymptoms.jsx";
 import NutritionQuestionnaire from "./pages/NutritionQuestionnaire.jsx";
 import Register2 from "./pages/Register2.jsx";
@@ -18,16 +17,16 @@ import Register2 from "./pages/Register2.jsx";
 const router = createBrowserRouter([
   {
     path: "/",
-    element: <App />, // Layout component (must contain <Outlet />)
+    element: <App />,
     children: [
 
-      // ✅ Default Route → Home Page
+      // Home Page
       {
         index: true,
         element: <Home />,
       },
 
-      // ✅ Login Route (Public)
+      // Login - Public
       {
         path: "login",
         element: (
@@ -37,7 +36,7 @@ const router = createBrowserRouter([
         ),
       },
 
-      // ✅ Register Route (Public)
+      // Register - Public
       {
         path: "register",
         element: (
@@ -46,39 +45,52 @@ const router = createBrowserRouter([
           </AuthLayout>
         ),
       },
-      
+
+      // Nutrition Questionnaire - Protected
       {
         path: "mcq",
         element: (
-          <AuthLayout authentication={false}>
+          <AuthLayout authentication={true}>
             <NutritionQuestionnaire />
           </AuthLayout>
         ),
       },
 
-      // ✅ Dashboard Route (Protected)
+      // Dashboard - Protected
       {
         path: "dashboard",
         element: (
-          <AuthLayout authentication={false}>
+          <AuthLayout authentication={true}>
             <MaternalDashboard />
           </AuthLayout>
         ),
       },
 
-      // ✅ Patient Details Route (Protected)
+      // Assessment History - Protected
       {
-        path: "patients/:id",
+        path: "patients/history",
         element: (
-          <AuthLayout authentication={false}>
+          <AuthLayout authentication={true}>
             <PatientDetails />
           </AuthLayout>
         ),
       },
+
+      // Patient Details - Protected
+      {
+        path: "patients/:id",
+        element: (
+          <AuthLayout authentication={true}>
+            <PatientDetails />
+          </AuthLayout>
+        ),
+      },
+
+      // Emergency Symptoms - Protected
       {
         path: "emergencySymptoms",
         element: (
-          <AuthLayout authentication={false}>
+          <AuthLayout authentication={true}>
             <EmergencySymptoms />
           </AuthLayout>
         ),

@@ -4,7 +4,8 @@ import { useSelector } from "react-redux";
 
 export default function AuthLayout({ children, authentication = true }) {
   const navigate = useNavigate();
-  const authStatus = useSelector((state) => state.auth.isAuthenticated);
+
+  const authStatus = useSelector((state) => state.auth.status);
 
   useEffect(() => {
     if (authentication && !authStatus) {
@@ -12,12 +13,19 @@ export default function AuthLayout({ children, authentication = true }) {
     }
 
     if (!authentication && authStatus) {
-      navigate("/", { replace: true });
+      navigate("/dashboard", { replace: true });
     }
   }, [authStatus, authentication, navigate]);
 
-  if (authentication && !authStatus) return null;
-  if (!authentication && authStatus) return null;
+  // Protected page + user is not logged in
+  if (authentication && !authStatus) {
+    return null;
+  }
+
+  // Login/Register page + user is already logged in
+  if (!authentication && authStatus) {
+    return null;
+  }
 
   return <>{children}</>;
 }

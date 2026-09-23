@@ -1,14 +1,20 @@
-import React, { useState } from "react";
-import { useLocation } from "react-router-dom";
+import React, { useEffect, useState } from "react";
 import axios from "axios";
+import { useLocation, useNavigate } from "react-router-dom";
 
 const MaternalDashboard = () => {
   const location = useLocation();
+  const navigate = useNavigate();
+
+  // Get assessment ID when Edit is clicked
+  const queryParams = new URLSearchParams(location.search);
+  const editId = queryParams.get("edit");
+
+  const isEditMode = Boolean(editId);
 
   const isFromMCQ = location.state?.dietScore !== undefined;
 
   const [formData, setFormData] = useState({
-    patient_id: "",
     age: "",
     systolicBP: "",
     diastolicBP: "",
@@ -24,8 +30,76 @@ const MaternalDashboard = () => {
   });
 
   const [result, setResult] = useState(null);
-  const [appointment, setAppointment] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [loadingAssessment, setLoadingAssessment] = useState(false);
+
+  // Load existing assessment when Edit is selected
+  useEffect(() => {
+    if (!editId) return;
+
+    const fetchAssessment = async () => {
+      try {
+        setLoadingAssessment(true);
+
+        const token = localStorage.getItem("access_token");
+
+        const response = await axios.get(
+          `http://127.0.0.1:8000/assessments/${editId}`,
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          }
+        );
+
+        const assessment = response.data;
+
+        setFormData({
+          age: assessment.age,
+          systolicBP: assessment.systolicBP,
+          diastolicBP: assessment.diastolicBP,
+          BS: assessment.BS,
+          bodyTemp: assessment.bodyTemp,
+          heartRate: assessment.heartRate,
+          bmi: assessment.bmi,
+          hb: assessment.hb,
+          dietScore: assessment.dietScore,
+          protein_g: assessment.protein_g,
+          calcium_mg: assessment.calcium_mg,
+          iron_mg: assessment.iron_mg,
+        });
+
+        setResult({
+          risk: {
+            high_risk_probability:
+              assessment.high_risk_probability,
+          },
+          nutrition: {
+            deficiency_type:
+              assessment.deficiency_type,
+            confidence:
+              assessment.nutrient_confidence,
+            recommended_foods:
+              assessment.recommended_foods,
+          },
+        });
+
+      } catch (error) {
+        console.error(error.response?.data);
+
+        alert(
+          error.response?.data?.detail ||
+          "Failed to load assessment."
+        );
+
+        navigate("/patients/history");
+      } finally {
+        setLoadingAssessment(false);
+      }
+    };
+
+    fetchAssessment();
+  }, [editId, navigate]);
 
   const handleChange = (e) => {
     setFormData({
@@ -34,44 +108,15 @@ const MaternalDashboard = () => {
     });
   };
 
-  // 🔥 Appointment Logic
-  const calculateAppointment = (probability) => {
-    const today = new Date();
-    let days = 28;
-    let message = "Routine Follow-up (Low Risk)";
-    let color = "text-green-600";
-    let bg = "bg-green-100";
-
-    if (probability >= 0.75) {
-      days = 7;
-      message = "⚠ High Risk – Follow-up in 1 Week";
-      color = "text-red-600";
-      bg = "bg-red-100";
-    } else if (probability >= 0.5) {
-      days = 14;
-      message = "📅 Moderate Risk – Follow-up in 2 Weeks";
-      color = "text-yellow-600";
-      bg = "bg-yellow-100";
-    }
-
-    today.setDate(today.getDate() + days);
-
-    return {
-      date: today.toDateString(),
-      message,
-      color,
-      bg,
-    };
-  };
-
   const handleSubmit = async (e) => {
     e.preventDefault();
 
     try {
       setLoading(true);
 
+      const token = localStorage.getItem("access_token");
+
       const payload = {
-        patient_id: Number(formData.patient_id),
         age: Number(formData.age),
         systolicBP: Number(formData.systolicBP),
         diastolicBP: Number(formData.diastolicBP),
@@ -86,55 +131,136 @@ const MaternalDashboard = () => {
         iron_mg: Number(formData.iron_mg),
       };
 
-      const response = await axios.post(
-        "http://127.0.0.1:8000/predict",
-        payload
-      );
+      let response;
 
-      setResult(response.data);
+      // Edit existing assessment
+      if (isEditMode) {
+        response = await axios.put(
+          `http://127.0.0.1:8000/assessments/${editId}`,
+          payload,
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          }
+        );
 
-      const appointmentData = calculateAppointment(
-        response.data.risk.high_risk_probability
-      );
+        alert("Assessment updated successfully.");
 
-      setAppointment(appointmentData);
+      } else {
+        // Create new assessment
+        response = await axios.post(
+          "http://127.0.0.1:8000/assessments",
+          payload,
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          }
+        );
+
+        alert("Assessment created successfully.");
+      }
+
+      const assessment = response.data;
+
+      // Handle POST response structure
+      if (assessment.risk && assessment.nutrition) {
+        setResult(assessment);
+      } else {
+        // Handle PUT response structure
+        setResult({
+          risk: {
+            high_risk_probability:
+              assessment.high_risk_probability,
+          },
+          nutrition: {
+            deficiency_type:
+              assessment.deficiency_type,
+            confidence:
+              assessment.nutrient_confidence,
+            recommended_foods:
+              assessment.recommended_foods,
+          },
+        });
+      }
+
+      // Remove edit mode after update
+      if (isEditMode) {
+        navigate("/dashboard", { replace: true });
+      }
 
     } catch (error) {
       console.error(error.response?.data);
-      alert("Prediction failed.");
+
+      alert(
+        error.response?.data?.detail ||
+        "Assessment failed."
+      );
     } finally {
       setLoading(false);
     }
   };
 
+  if (loadingAssessment) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <p className="text-purple-600 font-semibold">
+          Loading assessment...
+        </p>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-50 to-teal-100 py-10 px-4">
+
       <div className="max-w-5xl mx-auto bg-white shadow-2xl rounded-2xl p-8">
 
-        <h1 className="text-3xl font-bold text-center text-purple-700 mb-8">
-          Predict AI – Maternal Risk & Nutrition
+        <h1 className="text-3xl font-bold text-center text-purple-700 mb-2">
+          {isEditMode
+            ? "Edit Maternal Assessment"
+            : "Predict AI – Maternal Risk & Nutrition"}
         </h1>
 
-        <form onSubmit={handleSubmit} className="grid md:grid-cols-2 gap-4">
+        {isEditMode && (
+          <p className="text-center text-gray-500 mb-8">
+            Update the assessment details and submit again.
+          </p>
+        )}
+
+        <form
+          onSubmit={handleSubmit}
+          className="grid md:grid-cols-2 gap-4"
+        >
 
           {Object.keys(formData).map((key) => (
             <div key={key}>
+
               <label className="text-sm text-gray-600 capitalize">
                 {key.replace("_", " ")}
               </label>
+
               <input
                 type="number"
                 name={key}
                 value={formData[key]}
                 onChange={handleChange}
-                readOnly={key === "dietScore" && isFromMCQ}
+                readOnly={
+                  key === "dietScore" &&
+                  isFromMCQ &&
+                  !isEditMode
+                }
                 className={`w-full p-3 border rounded-lg focus:ring-2 focus:ring-purple-500 ${
-                  key === "dietScore" && isFromMCQ
+                  key === "dietScore" &&
+                  isFromMCQ &&
+                  !isEditMode
                     ? "bg-gray-100 cursor-not-allowed"
                     : ""
                 }`}
                 required
               />
+
             </div>
           ))}
 
@@ -142,11 +268,15 @@ const MaternalDashboard = () => {
             type="submit"
             className="md:col-span-2 bg-purple-600 text-white p-3 rounded-lg font-semibold hover:bg-purple-700 transition"
           >
-            {loading ? "Processing..." : "Predict Risk & Nutrition"}
+            {loading
+              ? "Processing..."
+              : isEditMode
+              ? "Update Assessment"
+              : "Predict Risk & Nutrition"}
           </button>
+
         </form>
 
-        {/* 🔥 RESULTS */}
         {result && (
           <div className="mt-10 p-6 bg-gray-50 rounded-xl border">
 
@@ -159,26 +289,17 @@ const MaternalDashboard = () => {
               {(result.risk.high_risk_probability * 100).toFixed(1)}%
             </p>
 
-            {appointment && (
-              <div className={`mt-6 p-4 rounded-lg ${appointment.bg}`}>
-                <p className={`font-semibold ${appointment.color}`}>
-                  {appointment.message}
-                </p>
-                <p className="mt-2">
-                  Next Appointment Date:{" "}
-                  <strong>{appointment.date}</strong>
-                </p>
-              </div>
-            )}
-
             <div className="mt-6">
+
               <h3 className="text-xl font-semibold text-teal-600 mb-2">
                 Nutrition Assessment
               </h3>
 
               <p>
                 Deficiency Type:{" "}
-                <strong>{result.nutrition.deficiency_type}</strong>
+                <strong>
+                  {result.nutrition.deficiency_type}
+                </strong>
               </p>
 
               <p>
@@ -187,16 +308,32 @@ const MaternalDashboard = () => {
               </p>
 
               <ul className="list-disc list-inside mt-3">
-                {result.nutrition.recommended_foods.map((food, index) => (
-                  <li key={index}>{food}</li>
-                ))}
+                {result.nutrition.recommended_foods.map(
+                  (food, index) => (
+                    <li key={index}>{food}</li>
+                  )
+                )}
               </ul>
+
             </div>
 
           </div>
         )}
 
+        <div className="mt-8 text-center">
+
+          <button
+            type="button"
+            onClick={() => navigate("/patients/history")}
+            className="px-6 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700"
+          >
+            View Assessment History
+          </button>
+
+        </div>
+
       </div>
+
     </div>
   );
 };
