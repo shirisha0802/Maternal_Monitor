@@ -29,7 +29,7 @@ export default function Register2() {
       setError("");
 
       const response = await axios.post(
-        `${process.env.SIGNUP_API_URL}`,
+        `${import.meta.env.VITE_SIGNUP_API_URL}`,
         {
           name: form.name,
           email: form.email,

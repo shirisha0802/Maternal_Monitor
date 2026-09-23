@@ -70,7 +70,7 @@ export default function Register() {
       };
 
       const response = await axios.post(
-        `${process.env.REGISTER_API_URL}`,
+        `${import.meta.env.VITE_REGISTER_API_URL}`,
         payload,
         {
           headers: {

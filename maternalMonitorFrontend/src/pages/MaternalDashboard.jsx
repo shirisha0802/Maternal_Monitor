@@ -44,7 +44,7 @@ const MaternalDashboard = () => {
         const token = localStorage.getItem("access_token");
 
         const response = await axios.get(
-          `${process.env.ASSESSMENT_API_URL}/${editId}`,
+          `${import.meta.env.VITE_ASSESSMENT_API_URL}/${editId}`,
           {
             headers: {
               Authorization: `Bearer ${token}`,
