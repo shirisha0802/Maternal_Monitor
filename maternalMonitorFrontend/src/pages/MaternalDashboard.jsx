@@ -44,7 +44,7 @@ const MaternalDashboard = () => {
         const token = localStorage.getItem("access_token");
 
         const response = await axios.get(
-          `http://127.0.0.1:8000/assessments/${editId}`,
+          `${process.env.ASSESSMENT_API_URL}/${editId}`,
           {
             headers: {
               Authorization: `Bearer ${token}`,
@@ -136,7 +136,7 @@ const MaternalDashboard = () => {
       // Edit existing assessment
       if (isEditMode) {
         response = await axios.put(
-          `http://127.0.0.1:8000/assessments/${editId}`,
+          `${process.env.ASSESSMENT_API_URL}/${editId}`,
           payload,
           {
             headers: {
@@ -150,7 +150,7 @@ const MaternalDashboard = () => {
       } else {
         // Create new assessment
         response = await axios.post(
-          "http://127.0.0.1:8000/assessments",
+          `${process.env.ASSESSMENT_API_URL}`,
           payload,
           {
             headers: {

@@ -54,13 +54,7 @@ export default function Header() {
             Register Patient
           </NavLink>
 
-          <NavLink to="/mcq" className={navStyle}>
-            Nutrition MCQ
-          </NavLink>
-
-          <NavLink to="/emergencySymptoms" className={navStyle}>
-            Emergency
-          </NavLink>
+        
 
           <button
             onClick={handleLogout}

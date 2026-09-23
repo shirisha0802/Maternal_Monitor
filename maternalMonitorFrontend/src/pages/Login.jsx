@@ -38,7 +38,7 @@ function Login() {
       setError("");
 
       const response = await axios.post(
-        "http://localhost:8000/login",
+        `${process.env.LOGIN_API_URL}`,
         {
           email: form.email,
           password: form.password,
